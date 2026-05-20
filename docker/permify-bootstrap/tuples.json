@@ -1,0 +1,10 @@
+{
+  "metadata": { "schema_version": "__SCHEMA_VERSION__" },
+  "tuples": [
+    {
+      "entity":   { "type": "pomerium_route", "id": "allow.localhost" },
+      "relation": "viewer",
+      "subject":  { "type": "user", "id": "anonymous" }
+    }
+  ]
+}

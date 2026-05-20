@@ -1,0 +1,40 @@
+# Demo Pomerium configuration for the Permify plugin.
+# DO NOT USE THIS CONFIG IN PRODUCTION — TLS is disabled and the
+# routes are open to anyone the PDP allows.
+
+address: ":9080"
+insecure_server: true
+grpc_insecure: true
+
+# 32-byte random base64 values; demo only, regenerate before any real use:
+#   openssl rand -base64 32
+shared_secret: uzfcSSugSKWdV3WgM4vC0te2AY5Wkfe+aI68y345/YE=
+cookie_secret: vQCPwWtwCMBubbEipmUF32ljtINfAnLUlmq3GmHmfsQ=
+
+policy_engine: permify
+external_policy_engine:
+  endpoint: permify:3478
+  plaintext: true
+  tenant_id: t1
+  entity_type: pomerium_route
+  # Key Permify entity IDs by HTTP Host so the seed tuples in
+  # permify-bootstrap/tuples.json (which use "allow.localhost") line
+  # up with the request the proxy receives.
+  entity_id_source: host
+  anonymous_subject_id: anonymous
+
+runtime_flags:
+  external_policy_engine: true
+
+routes:
+  # The from host is what the test sends in the Host header; pomerium
+  # uses it to look up the policy. `allow_public_unauthenticated_access`
+  # short-circuits Pomerium's own login redirect so the request reaches
+  # the engine for a Permify decision.
+  - from: http://allow.localhost
+    to: http://upstream:8080
+    allow_public_unauthenticated_access: true
+
+  - from: http://deny.localhost
+    to: http://upstream:8080
+    allow_public_unauthenticated_access: true

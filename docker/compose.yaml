@@ -1,0 +1,71 @@
+# Demo stack proving the Permify engine end-to-end with a custom
+# Pomerium binary. The binary itself is bind-mounted in from the host
+# so this file works without a Dockerfile — build it with:
+#
+#   CGO_ENABLED=0 go build -o ./pomerium-permify ./cmd/pomerium-permify
+#
+# from the repository root, then `docker compose up` here.
+
+name: pomerium-permify-demo
+
+services:
+  permify:
+    image: ghcr.io/permify/permify:latest
+    command:
+      - serve
+      - --database-engine=memory
+      - --log-level=warn
+    ports:
+      - "3478:3478" # gRPC
+      - "3476:3476" # HTTP
+    # The official Permify image is distroless (no shell, no curl/wget),
+    # so the only thing we can exec is `permify` itself. `permify
+    # version` only proves the binary is in place; the real readiness
+    # signal is `permify-bootstrap` exiting cleanly after it has
+    # polled the HTTP /healthz endpoint.
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/permify", "version"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  # One-shot container: waits for permify's HTTP /healthz to respond,
+  # then writes the tenant, schema and seed tuples that
+  # pomerium-config.yaml's routes depend on. Exits 0 on success,
+  # non-zero on failure.
+  permify-bootstrap:
+    image: curlimages/curl:8.10.1
+    depends_on:
+      permify:
+        condition: service_started
+    volumes:
+      - ./permify-bootstrap:/bootstrap:ro
+    entrypoint: ["/bin/sh", "/bootstrap/bootstrap.sh"]
+
+  upstream:
+    image: hashicorp/http-echo
+    command: ["-text=hello-from-upstream", "-listen=:8080"]
+    expose:
+      - "8080"
+
+  pomerium:
+    # Pomerium embeds envoy built against glibc, so a glibc-based
+    # runtime image is required (alpine/musl will fail with ENOENT on
+    # exec of the unpacked envoy binary).
+    image: debian:bookworm-slim
+    command:
+      - /usr/local/bin/pomerium-permify
+      - -config
+      - /etc/pomerium/config.yaml
+    volumes:
+      - ${POMERIUM_PERMIFY_BINARY:-../pomerium-permify}:/usr/local/bin/pomerium-permify:ro
+      - ./pomerium-config.yaml:/etc/pomerium/config.yaml:ro
+    ports:
+      - "9080:9080"
+    depends_on:
+      permify:
+        condition: service_healthy
+      permify-bootstrap:
+        condition: service_completed_successfully
+      upstream:
+        condition: service_started

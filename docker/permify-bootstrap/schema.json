@@ -1,0 +1,3 @@
+{
+  "schema": "entity user {}\n\nentity pomerium_route {\n    relation viewer @user\n    relation editor @user\n    relation owner  @user\n\n    permission view   = viewer or editor or owner\n    permission create = editor or owner\n    permission update = editor or owner\n    permission delete = owner\n    permission access = viewer or editor or owner\n}\n"
+}

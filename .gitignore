@@ -1,0 +1,27 @@
+# Built binaries
+/pomerium-permify
+/docker/pomerium-permify
+/cmd/pomerium-permify/pomerium-permify
+
+# Go build / test artifacts
+*.test
+*.out
+*.prof
+coverage.txt
+coverage.html
+
+# Vendored deps (we rely on Go modules)
+/vendor/
+
+# Editor / OS
+.idea/
+.vscode/
+.DS_Store
+*.swp
+*.swo
+*~
+
+# Local dev overrides
+.envrc
+.env
+.env.local
